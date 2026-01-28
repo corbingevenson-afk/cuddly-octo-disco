@@ -3,27 +3,549 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Snake Game</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Games & AI Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.8em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 80px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.3em;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        /* Section Styles */
+        section {
+            padding: 60px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            text-align: center;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            margin: 15px auto 0;
+            border-radius: 2px;
+        }
+
+        /* Card Grid */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        /* Game Cards */
+        .game-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .game-preview {
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+        }
+
+        .game-info {
+            padding: 25px;
+        }
+
+        .game-info h3 {
+            font-size: 1.4em;
+            margin-bottom: 10px;
+        }
+
+        .game-info p {
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        .play-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* AI Link Cards */
+        .ai-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .ai-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .ai-card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .ai-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+
+        .ai-card h3 {
+            font-size: 1.3em;
+        }
+
+        .ai-card p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .ai-card .category {
+            display: inline-block;
+            padding: 5px 12px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-top: 15px;
+            color: #a5b4fc;
+        }
+
+        /* Color variations for AI icons */
+        .claude { background: linear-gradient(135deg, #d97706, #f59e0b); }
+        .gemini { background: linear-gradient(135deg, #4285f4, #34a853); }
+        .perplexity { background: linear-gradient(135deg, #20b2aa, #48d1cc); }
+        .midjourney { background: linear-gradient(135deg, #fff, #000); color: #000; }
+        .stability { background: linear-gradient(135deg, #8b5cf6, #a855f7); }
+        .copilot { background: linear-gradient(135deg, #0078d4, #00bcf2); }
+        .codeium { background: linear-gradient(135deg, #09b6a2, #0dc5b8); }
+        .huggingface { background: linear-gradient(135deg, #ff9d00, #ffcc00); }
+        .replicate { background: linear-gradient(135deg, #000, #333); }
+        .runway { background: linear-gradient(135deg, #00d4ff, #7c3aed); }
+        .pika { background: linear-gradient(135deg, #ff6b9d, #c44bff); }
+        .suno { background: linear-gradient(135deg, #1db954, #191414); }
+        .elevenlabs { background: linear-gradient(135deg, #000, #1a1a1a); }
+        .notion { background: linear-gradient(135deg, #000, #fff); }
+        .jasper { background: linear-gradient(135deg, #ff5757, #ff914d); }
+        .copy { background: linear-gradient(135deg, #1a1a2e, #5c3d99); }
+        .deepl { background: linear-gradient(135deg, #0f2b46, #042b48); }
+        .grammarly { background: linear-gradient(135deg, #15c39a, #0a9c6e); }
+        .phind { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .you { background: linear-gradient(135deg, #5046e5, #7c3aed); }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 60px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5em;
+            }
+
+            .nav-links {
+                gap: 15px;
+            }
+
+            header {
+                padding: 15px 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>Google Snake</h1>
-        <div class="score-container">
-            <p>Score: <span id="score">0</span></p>
-            <p>High Score: <span id="highScore">0</span></p>
+    <header>
+        <nav>
+            <div class="logo">Games & AI Hub</div>
+            <div class="nav-links">
+                <a href="#games">Games</a>
+                <a href="#ai-tools">AI Tools</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="hero">
+            <h1>Play Games & Explore AI</h1>
+            <p>Your one-stop destination for fun browser games and the best AI tools on the web. Play, create, and discover the power of artificial intelligence.</p>
         </div>
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
-        <div class="controls">
-            <p>Use Arrow Keys to Move</p>
-            <button id="startBtn">Start Game</button>
-        </div>
-        <div class="game-over" id="gameOver">
-            <h2>Game Over!</h2>
-            <p>Your Score: <span id="finalScore">0</span></p>
-            <button id="restartBtn">Play Again</button>
-        </div>
-    </div>
-    <script src="script.js"></script>
+
+        <!-- Games Section -->
+        <section id="games">
+            <h2 class="section-title">Games</h2>
+            <div class="card-grid">
+                <div class="game-card">
+                    <div class="game-preview">&#127822;</div>
+                    <div class="game-info">
+                        <h3>Snake Game</h3>
+                        <p>Classic snake game with modern graphics. Eat food, grow longer, and beat your high score!</p>
+                        <a href="game.html" class="play-btn">Play Now</a>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <div class="game-preview">&#10060;</div>
+                    <div class="game-info">
+                        <h3>Tic-Tac-Toe</h3>
+                        <p>Challenge yourself against an AI opponent or play with a friend in this timeless classic.</p>
+                        <a href="tictactoe.html" class="play-btn">Play Now</a>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <div class="game-preview">&#127183;</div>
+                    <div class="game-info">
+                        <h3>Memory Match</h3>
+                        <p>Test your memory by matching pairs of cards. How fast can you clear the board?</p>
+                        <a href="memory.html" class="play-btn">Play Now</a>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <div class="game-preview">&#127922;</div>
+                    <div class="game-info">
+                        <h3>2048</h3>
+                        <p>Slide numbered tiles to combine them and reach the elusive 2048 tile!</p>
+                        <a href="2048.html" class="play-btn">Play Now</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Tools Section -->
+        <section id="ai-tools">
+            <h2 class="section-title">AI Tools & Resources</h2>
+            <div class="card-grid">
+                <!-- Chat & Assistant AIs -->
+                <a href="https://claude.ai" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon claude">&#129302;</div>
+                        <h3>Claude</h3>
+                    </div>
+                    <p>Anthropic's AI assistant known for nuanced understanding, helpful responses, and strong safety practices.</p>
+                    <span class="category">AI Assistant</span>
+                </a>
+
+                <a href="https://gemini.google.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon gemini">&#10024;</div>
+                        <h3>Google Gemini</h3>
+                    </div>
+                    <p>Google's multimodal AI that can understand and generate text, images, code, and more.</p>
+                    <span class="category">AI Assistant</span>
+                </a>
+
+                <a href="https://www.perplexity.ai" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon perplexity">&#128269;</div>
+                        <h3>Perplexity AI</h3>
+                    </div>
+                    <p>AI-powered search engine that provides accurate answers with cited sources in real-time.</p>
+                    <span class="category">AI Search</span>
+                </a>
+
+                <a href="https://you.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon you">&#127760;</div>
+                        <h3>You.com</h3>
+                    </div>
+                    <p>AI search engine with chat capabilities, code generation, and privacy-focused browsing.</p>
+                    <span class="category">AI Search</span>
+                </a>
+
+                <a href="https://www.phind.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon phind">&#128187;</div>
+                        <h3>Phind</h3>
+                    </div>
+                    <p>AI search engine optimized for developers. Get coding answers with relevant documentation.</p>
+                    <span class="category">AI Search</span>
+                </a>
+
+                <!-- Image Generation -->
+                <a href="https://www.midjourney.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon midjourney">&#127912;</div>
+                        <h3>Midjourney</h3>
+                    </div>
+                    <p>Create stunning AI-generated artwork from text descriptions with incredible artistic quality.</p>
+                    <span class="category">Image Generation</span>
+                </a>
+
+                <a href="https://stability.ai" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon stability">&#127752;</div>
+                        <h3>Stability AI</h3>
+                    </div>
+                    <p>Open-source AI models including Stable Diffusion for image generation and more.</p>
+                    <span class="category">Image Generation</span>
+                </a>
+
+                <a href="https://leonardo.ai" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon stability">&#128444;</div>
+                        <h3>Leonardo.ai</h3>
+                    </div>
+                    <p>Create production-quality visual assets with unprecedented style-consistency.</p>
+                    <span class="category">Image Generation</span>
+                </a>
+
+                <!-- Code Assistants -->
+                <a href="https://github.com/features/copilot" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon copilot">&#128736;</div>
+                        <h3>GitHub Copilot</h3>
+                    </div>
+                    <p>AI pair programmer that helps you write code faster with intelligent suggestions.</p>
+                    <span class="category">Code Assistant</span>
+                </a>
+
+                <a href="https://codeium.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon codeium">&#128161;</div>
+                        <h3>Codeium</h3>
+                    </div>
+                    <p>Free AI-powered code completion and chat for over 70 programming languages.</p>
+                    <span class="category">Code Assistant</span>
+                </a>
+
+                <a href="https://www.cursor.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon phind">&#9000;</div>
+                        <h3>Cursor</h3>
+                    </div>
+                    <p>The AI-first code editor. Write, edit, and discuss code with powerful AI integration.</p>
+                    <span class="category">Code Assistant</span>
+                </a>
+
+                <!-- Video Generation -->
+                <a href="https://runwayml.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon runway">&#127909;</div>
+                        <h3>Runway</h3>
+                    </div>
+                    <p>AI-powered creative tools for video generation, editing, and visual effects.</p>
+                    <span class="category">Video Generation</span>
+                </a>
+
+                <a href="https://pika.art" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon pika">&#127916;</div>
+                        <h3>Pika</h3>
+                    </div>
+                    <p>Create and edit videos with AI. Turn your ideas into motion in seconds.</p>
+                    <span class="category">Video Generation</span>
+                </a>
+
+                <!-- Audio & Music -->
+                <a href="https://suno.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon suno">&#127925;</div>
+                        <h3>Suno AI</h3>
+                    </div>
+                    <p>Create full songs with vocals, instruments, and lyrics using just text prompts.</p>
+                    <span class="category">Music Generation</span>
+                </a>
+
+                <a href="https://elevenlabs.io" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon elevenlabs">&#127908;</div>
+                        <h3>ElevenLabs</h3>
+                    </div>
+                    <p>Ultra-realistic AI voice generation and cloning for any use case.</p>
+                    <span class="category">Voice AI</span>
+                </a>
+
+                <!-- Writing & Productivity -->
+                <a href="https://www.notion.so/product/ai" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon notion">&#128221;</div>
+                        <h3>Notion AI</h3>
+                    </div>
+                    <p>AI writing assistant integrated into Notion for drafting, editing, and brainstorming.</p>
+                    <span class="category">Writing Assistant</span>
+                </a>
+
+                <a href="https://www.jasper.ai" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon jasper">&#9997;</div>
+                        <h3>Jasper</h3>
+                    </div>
+                    <p>AI content platform for marketing teams to create on-brand content at scale.</p>
+                    <span class="category">Writing Assistant</span>
+                </a>
+
+                <a href="https://www.copy.ai" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon copy">&#128196;</div>
+                        <h3>Copy.ai</h3>
+                    </div>
+                    <p>Generate marketing copy, blog posts, and social media content in seconds.</p>
+                    <span class="category">Writing Assistant</span>
+                </a>
+
+                <a href="https://www.grammarly.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon grammarly">&#9989;</div>
+                        <h3>Grammarly</h3>
+                    </div>
+                    <p>AI-powered writing assistant that helps you write clearly and mistake-free.</p>
+                    <span class="category">Writing Assistant</span>
+                </a>
+
+                <!-- Translation -->
+                <a href="https://www.deepl.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon deepl">&#127760;</div>
+                        <h3>DeepL</h3>
+                    </div>
+                    <p>World's most accurate translator powered by neural networks. Supports 30+ languages.</p>
+                    <span class="category">Translation</span>
+                </a>
+
+                <!-- ML Platforms -->
+                <a href="https://huggingface.co" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon huggingface">&#129303;</div>
+                        <h3>Hugging Face</h3>
+                    </div>
+                    <p>The AI community hub with thousands of models, datasets, and spaces to explore.</p>
+                    <span class="category">ML Platform</span>
+                </a>
+
+                <a href="https://replicate.com" target="_blank" class="ai-card">
+                    <div class="ai-card-header">
+                        <div class="ai-icon replicate">&#9881;</div>
+                        <h3>Replicate</h3>
+                    </div>
+                    <p>Run open-source machine learning models with a cloud API. Easy to use and scale.</p>
+                    <span class="category">ML Platform</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Games & AI Hub - Your gateway to fun and artificial intelligence</p>
+    </footer>
 </body>
 </html>

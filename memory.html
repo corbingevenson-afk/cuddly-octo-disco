@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match - Games & AI Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-top: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 25px 0;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .diff-btn {
+            padding: 10px 20px;
+            border: 2px solid rgba(102, 126, 234, 0.5);
+            background: transparent;
+            color: #fff;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .diff-btn:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .diff-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: transparent;
+        }
+
+        .board {
+            display: grid;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px auto;
+        }
+
+        .board.easy {
+            grid-template-columns: repeat(4, 70px);
+        }
+
+        .board.medium {
+            grid-template-columns: repeat(4, 70px);
+        }
+
+        .board.hard {
+            grid-template-columns: repeat(6, 60px);
+        }
+
+        .card {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            transition: transform 0.3s, background 0.3s;
+            position: relative;
+        }
+
+        .board.easy .card,
+        .board.medium .card {
+            width: 70px;
+            height: 70px;
+        }
+
+        .board.hard .card {
+            width: 60px;
+            height: 60px;
+            font-size: 1.6em;
+        }
+
+        .card:hover:not(.flipped):not(.matched) {
+            transform: scale(1.05);
+        }
+
+        .card .front,
+        .card .back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backface-visibility: hidden;
+            border-radius: 10px;
+            transition: transform 0.4s;
+        }
+
+        .card .back {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .card .front {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transform: rotateY(180deg);
+        }
+
+        .card.flipped .back {
+            transform: rotateY(180deg);
+        }
+
+        .card.flipped .front {
+            transform: rotateY(0);
+        }
+
+        .card.matched {
+            background: rgba(102, 126, 234, 0.3);
+            border: 2px solid #667eea;
+            cursor: default;
+            animation: matchPulse 0.5s ease;
+        }
+
+        .card.matched .front {
+            background: rgba(102, 126, 234, 0.3);
+            border: none;
+        }
+
+        @keyframes matchPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .message {
+            font-size: 1.5em;
+            margin: 20px 0;
+            color: #f093fb;
+            min-height: 40px;
+        }
+
+        .reset-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 500px) {
+            .board.easy .card,
+            .board.medium .card {
+                width: 60px;
+                height: 60px;
+            }
+            .board.hard .card {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3em;
+            }
+            .board.easy,
+            .board.medium {
+                grid-template-columns: repeat(4, 60px);
+            }
+            .board.hard {
+                grid-template-columns: repeat(6, 50px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">Back to Hub</a>
+
+    <div class="game-container">
+        <h1>Memory Match</h1>
+
+        <div class="difficulty-selector">
+            <button class="diff-btn active" data-pairs="6">Easy</button>
+            <button class="diff-btn" data-pairs="8">Medium</button>
+            <button class="diff-btn" data-pairs="12">Hard</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Moves</div>
+                <div class="stat-value" id="moves">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Time</div>
+                <div class="stat-value" id="time">0:00</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Matches</div>
+                <div class="stat-value" id="matches">0/6</div>
+            </div>
+        </div>
+
+        <div class="board easy" id="board"></div>
+
+        <div class="message" id="message"></div>
+
+        <button class="reset-btn" id="resetBtn">New Game</button>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const movesEl = document.getElementById('moves');
+        const timeEl = document.getElementById('time');
+        const matchesEl = document.getElementById('matches');
+        const messageEl = document.getElementById('message');
+        const resetBtn = document.getElementById('resetBtn');
+        const diffBtns = document.querySelectorAll('.diff-btn');
+
+        const emojis = ['🎮', '🎲', '🎯', '🎪', '🎨', '🎭', '🎸', '🎺', '🎻', '🎹', '🎬', '🎤', '🏆', '⚽', '🏀', '🎾'];
+
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let totalPairs = 6;
+        let gameStarted = false;
+        let timer = null;
+        let seconds = 0;
+        let canFlip = true;
+
+        // Difficulty selection
+        diffBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                diffBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                totalPairs = parseInt(btn.dataset.pairs);
+
+                board.className = 'board';
+                if (totalPairs === 6) board.classList.add('easy');
+                else if (totalPairs === 8) board.classList.add('medium');
+                else board.classList.add('hard');
+
+                initGame();
+            });
+        });
+
+        resetBtn.addEventListener('click', initGame);
+
+        function initGame() {
+            // Reset state
+            cards = [];
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            seconds = 0;
+            gameStarted = false;
+            canFlip = true;
+
+            if (timer) clearInterval(timer);
+
+            movesEl.textContent = '0';
+            timeEl.textContent = '0:00';
+            matchesEl.textContent = `0/${totalPairs}`;
+            messageEl.textContent = '';
+
+            // Create card pairs
+            const selectedEmojis = emojis.slice(0, totalPairs);
+            const cardValues = [...selectedEmojis, ...selectedEmojis];
+
+            // Shuffle
+            for (let i = cardValues.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cardValues[i], cardValues[j]] = [cardValues[j], cardValues[i]];
+            }
+
+            // Create cards
+            board.innerHTML = '';
+            cardValues.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.index = index;
+                card.dataset.value = emoji;
+                card.innerHTML = `
+                    <div class="back">?</div>
+                    <div class="front">${emoji}</div>
+                `;
+                card.addEventListener('click', () => flipCard(card));
+                board.appendChild(card);
+                cards.push(card);
+            });
+        }
+
+        function flipCard(card) {
+            if (!canFlip) return;
+            if (card.classList.contains('flipped')) return;
+            if (card.classList.contains('matched')) return;
+            if (flippedCards.length >= 2) return;
+
+            // Start timer on first move
+            if (!gameStarted) {
+                gameStarted = true;
+                timer = setInterval(() => {
+                    seconds++;
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    timeEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                movesEl.textContent = moves;
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            const match = card1.dataset.value === card2.dataset.value;
+
+            canFlip = false;
+
+            setTimeout(() => {
+                if (match) {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedPairs++;
+                    matchesEl.textContent = `${matchedPairs}/${totalPairs}`;
+
+                    if (matchedPairs === totalPairs) {
+                        clearInterval(timer);
+                        const mins = Math.floor(seconds / 60);
+                        const secs = seconds % 60;
+                        messageEl.textContent = `Congratulations! Completed in ${mins}:${secs.toString().padStart(2, '0')} with ${moves} moves!`;
+                    }
+                } else {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                }
+
+                flippedCards = [];
+                canFlip = true;
+            }, 800);
+        }
+
+        // Initialize game
+        initGame();
+    </script>
+</body>
+</html>
