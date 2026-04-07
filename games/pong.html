@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pong</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a1a;
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  #topBar {
+    width: 100%;
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1a1a3e;
+    border-bottom: 2px solid #6c5ce7;
+  }
+  #topBar a {
+    color: #6c5ce7;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.2s;
+  }
+  #topBar a:hover { color: #a29bfe; }
+  #topBar h1 {
+    font-size: 20px;
+    color: #6c5ce7;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  #canvasWrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 16px;
+  }
+  canvas {
+    display: block;
+    background: #0a0a1a;
+    border: 2px solid #1a1a3e;
+    border-radius: 4px;
+    max-width: 100%;
+    max-height: calc(100vh - 60px);
+  }
+</style>
+</head>
+<body>
+<div id="topBar">
+  <a href="../index.html">&larr; Back to Launcher</a>
+  <h1>Pong</h1>
+  <span></span>
+</div>
+<div id="canvasWrap">
+  <canvas id="c"></canvas>
+</div>
+<script>
+(function() {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  const BASE_W = 800, BASE_H = 500;
+  let scale = 1;
+
+  function resize() {
+    const wrap = document.getElementById('canvasWrap');
+    const maxW = wrap.clientWidth - 32;
+    const maxH = wrap.clientHeight - 32;
+    scale = Math.min(maxW / BASE_W, maxH / BASE_H, 1.5);
+    canvas.width = BASE_W * scale;
+    canvas.height = BASE_H * scale;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Colors
+  const BG = '#0a0a1a';
+  const ACCENT = '#6c5ce7';
+  const ACCENT_LIGHT = '#a29bfe';
+  const CARD = '#1a1a3e';
+
+  // Game constants (in base coords)
+  const PADDLE_W = 12, PADDLE_H = 80;
+  const BALL_R = 8;
+  const PADDLE_SPEED = 6;
+  const BALL_BASE_SPEED = 5;
+  const BALL_SPEED_INC = 0.3;
+  const WIN_SCORE = 7;
+  const PADDLE_MARGIN = 20;
+
+  // State
+  let playerY, aiY, ballX, ballY, ballVX, ballVY, ballSpeed;
+  let playerScore, aiScore;
+  let rallyCount;
+  let gameState; // 'start', 'playing', 'goal', 'win'
+  let winner;
+  let goalTimer;
+  let particles = [];
+  let aiDifficulty; // 0..1 how well AI tracks
+
+  // Input
+  const keys = {};
+  window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (['ArrowUp','ArrowDown','w','s',' '].includes(e.key)) e.preventDefault();
+    if (gameState === 'start' && (e.key === ' ' || e.key === 'Enter')) startGame();
+    if (gameState === 'win' && (e.key === ' ' || e.key === 'Enter')) resetAll();
+  });
+  window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+  function resetAll() {
+    playerScore = 0;
+    aiScore = 0;
+    aiDifficulty = 0.4;
+    gameState = 'start';
+    resetRound();
+  }
+
+  function startGame() {
+    gameState = 'playing';
+    resetRound();
+  }
+
+  function resetRound() {
+    playerY = BASE_H / 2 - PADDLE_H / 2;
+    aiY = BASE_H / 2 - PADDLE_H / 2;
+    ballX = BASE_W / 2;
+    ballY = BASE_H / 2;
+    ballSpeed = BALL_BASE_SPEED;
+    rallyCount = 0;
+    const angle = (Math.random() * 0.8 - 0.4);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    ballVX = Math.cos(angle) * ballSpeed * dir;
+    ballVY = Math.sin(angle) * ballSpeed;
+    particles = [];
+  }
+
+  function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 3 + 1;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: Math.random() * 0.03 + 0.02,
+        size: Math.random() * 3 + 1,
+        color
+      });
+    }
+  }
+
+  function update() {
+    if (gameState !== 'playing') return;
+
+    // Player movement
+    let pDir = 0;
+    if (keys['w'] || keys['W'] || keys['ArrowUp']) pDir = -1;
+    if (keys['s'] || keys['S'] || keys['ArrowDown']) pDir = 1;
+    playerY += pDir * PADDLE_SPEED;
+    playerY = Math.max(0, Math.min(BASE_H - PADDLE_H, playerY));
+
+    // AI movement - adaptive
+    const aiCenter = aiY + PADDLE_H / 2;
+    const diff = ballY - aiCenter;
+    const aiSpeed = PADDLE_SPEED * (0.6 + aiDifficulty * 0.5);
+    // AI only reacts when ball is heading towards it
+    if (ballVX > 0) {
+      if (Math.abs(diff) > 10) {
+        aiY += Math.sign(diff) * Math.min(aiSpeed, Math.abs(diff) * (0.05 + aiDifficulty * 0.08));
+      }
+    } else {
+      // Slowly drift toward center when ball going away
+      const centerDiff = BASE_H / 2 - PADDLE_H / 2 - aiY;
+      aiY += Math.sign(centerDiff) * Math.min(1.5, Math.abs(centerDiff) * 0.02);
+    }
+    aiY = Math.max(0, Math.min(BASE_H - PADDLE_H, aiY));
+
+    // Ball movement
+    ballX += ballVX;
+    ballY += ballVY;
+
+    // Top/bottom bounce
+    if (ballY - BALL_R <= 0) {
+      ballY = BALL_R;
+      ballVY = Math.abs(ballVY);
+      spawnParticles(ballX, ballY, ACCENT_LIGHT, 8);
+    }
+    if (ballY + BALL_R >= BASE_H) {
+      ballY = BASE_H - BALL_R;
+      ballVY = -Math.abs(ballVY);
+      spawnParticles(ballX, ballY, ACCENT_LIGHT, 8);
+    }
+
+    // Paddle collision - Player (left)
+    const pLeft = PADDLE_MARGIN;
+    const pRight = PADDLE_MARGIN + PADDLE_W;
+    if (ballVX < 0 && ballX - BALL_R <= pRight && ballX + BALL_R >= pLeft &&
+        ballY >= playerY && ballY <= playerY + PADDLE_H) {
+      ballX = pRight + BALL_R;
+      const hitPos = (ballY - playerY) / PADDLE_H; // 0..1
+      const angle = (hitPos - 0.5) * Math.PI * 0.6; // -0.3pi..0.3pi
+      rallyCount++;
+      ballSpeed = BALL_BASE_SPEED + rallyCount * BALL_SPEED_INC;
+      ballVX = Math.cos(angle) * ballSpeed;
+      ballVY = Math.sin(angle) * ballSpeed;
+      spawnParticles(pRight, ballY, '#6c5ce7', 12);
+    }
+
+    // Paddle collision - AI (right)
+    const aLeft = BASE_W - PADDLE_MARGIN - PADDLE_W;
+    const aRight = BASE_W - PADDLE_MARGIN;
+    if (ballVX > 0 && ballX + BALL_R >= aLeft && ballX - BALL_R <= aRight &&
+        ballY >= aiY && ballY <= aiY + PADDLE_H) {
+      ballX = aLeft - BALL_R;
+      const hitPos = (ballY - aiY) / PADDLE_H;
+      const angle = Math.PI - (hitPos - 0.5) * Math.PI * 0.6;
+      rallyCount++;
+      ballSpeed = BALL_BASE_SPEED + rallyCount * BALL_SPEED_INC;
+      ballVX = Math.cos(angle) * ballSpeed;
+      ballVY = Math.sin(angle) * ballSpeed;
+      spawnParticles(aLeft, ballY, '#a29bfe', 12);
+    }
+
+    // Score
+    if (ballX - BALL_R < -10) {
+      aiScore++;
+      aiDifficulty = Math.min(0.85, aiDifficulty + 0.03);
+      afterGoal();
+    }
+    if (ballX + BALL_R > BASE_W + 10) {
+      playerScore++;
+      aiDifficulty = Math.max(0.25, aiDifficulty - 0.02);
+      afterGoal();
+    }
+
+    // Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function afterGoal() {
+    if (playerScore >= WIN_SCORE) {
+      winner = 'player';
+      gameState = 'win';
+    } else if (aiScore >= WIN_SCORE) {
+      winner = 'ai';
+      gameState = 'win';
+    } else {
+      gameState = 'goal';
+      goalTimer = 60;
+    }
+  }
+
+  function s(v) { return v * scale; }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Dashed center line
+    ctx.strokeStyle = CARD;
+    ctx.lineWidth = s(2);
+    ctx.setLineDash([s(10), s(10)]);
+    ctx.beginPath();
+    ctx.moveTo(s(BASE_W / 2), 0);
+    ctx.lineTo(s(BASE_W / 2), canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Scores
+    ctx.fillStyle = ACCENT;
+    ctx.font = `bold ${s(48)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(playerScore, s(BASE_W / 4), s(60));
+    ctx.fillText(aiScore, s(BASE_W * 3 / 4), s(60));
+
+    // Labels
+    ctx.font = `${s(12)}px sans-serif`;
+    ctx.fillStyle = '#555';
+    ctx.fillText('PLAYER', s(BASE_W / 4), s(80));
+    ctx.fillText('AI', s(BASE_W * 3 / 4), s(80));
+
+    // Paddles
+    ctx.fillStyle = ACCENT;
+    ctx.shadowColor = ACCENT;
+    ctx.shadowBlur = s(10);
+    ctx.fillRect(s(PADDLE_MARGIN), s(playerY), s(PADDLE_W), s(PADDLE_H));
+    ctx.fillStyle = ACCENT_LIGHT;
+    ctx.shadowColor = ACCENT_LIGHT;
+    ctx.fillRect(s(BASE_W - PADDLE_MARGIN - PADDLE_W), s(aiY), s(PADDLE_W), s(PADDLE_H));
+    ctx.shadowBlur = 0;
+
+    // Ball
+    if (gameState === 'playing' || gameState === 'goal') {
+      ctx.fillStyle = '#fff';
+      ctx.shadowColor = '#fff';
+      ctx.shadowBlur = s(15);
+      ctx.beginPath();
+      ctx.arc(s(ballX), s(ballY), s(BALL_R), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Ball trail
+      ctx.fillStyle = 'rgba(108, 92, 231, 0.3)';
+      ctx.beginPath();
+      ctx.arc(s(ballX - ballVX * 1.5), s(ballY - ballVY * 1.5), s(BALL_R * 0.7), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Particles
+    for (const p of particles) {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(s(p.x - p.size / 2), s(p.y - p.size / 2), s(p.size), s(p.size));
+    }
+    ctx.globalAlpha = 1;
+
+    // Overlays
+    if (gameState === 'start') {
+      drawOverlay('PONG', 'Press SPACE or ENTER to start\n\nW/S or Arrow Keys to move');
+    }
+
+    if (gameState === 'goal') {
+      goalTimer--;
+      if (goalTimer <= 0) {
+        gameState = 'playing';
+        resetRound();
+        // Keep scores
+        playerScore = playerScore;
+        aiScore = aiScore;
+      }
+    }
+
+    if (gameState === 'win') {
+      const msg = winner === 'player' ? 'YOU WIN!' : 'AI WINS!';
+      const color = winner === 'player' ? '#4cd137' : '#e84118';
+      drawOverlay(msg, 'Press SPACE or ENTER to play again', color);
+    }
+  }
+
+  function drawOverlay(title, subtitle, titleColor) {
+    ctx.fillStyle = 'rgba(10, 10, 26, 0.85)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const boxW = s(400), boxH = s(200);
+    const boxX = (canvas.width - boxW) / 2;
+    const boxY = (canvas.height - boxH) / 2;
+    ctx.fillStyle = CARD;
+    ctx.strokeStyle = ACCENT;
+    ctx.lineWidth = s(2);
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, s(8));
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = titleColor || ACCENT;
+    ctx.font = `bold ${s(40)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(title, canvas.width / 2, boxY + s(70));
+
+    ctx.fillStyle = '#aaa';
+    ctx.font = `${s(14)}px sans-serif`;
+    const lines = subtitle.split('\n');
+    lines.forEach((line, i) => {
+      ctx.fillText(line, canvas.width / 2, boxY + s(110) + i * s(22));
+    });
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Keep scores across resetRound in goal state
+  const _resetRound = resetRound;
+  resetRound = function() {
+    const ps = playerScore, as = aiScore;
+    _resetRound();
+    playerScore = ps;
+    aiScore = as;
+  };
+
+  // Init
+  resetAll();
+  playerScore = 0;
+  aiScore = 0;
+  loop();
+})();
+</script>
+</body>
+</html>
